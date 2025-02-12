@@ -16,7 +16,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_TOKEN });
 // Function to load portfolio.json dynamically
 const loadPortfolio = async () => {
   try {
-    const data = await fs.readFile("data/portfolio.json", "utf-8");
+    const data = await fs.readFile("/data/portfolio.json", "utf-8");
     return JSON.parse(data);
   } catch (error) {
     console.error("Error loading portfolio.json:", error);
@@ -43,7 +43,7 @@ app.get("/inference", async (req, res) => {
       oneYearAgo.setFullYear(today.getFullYear() - 1);
       const formatDate = (date) => date.toISOString().split("T")[0];
   
-      const historical = await yahooFinance.historical(ticker, {
+      const historical = await yahooFinance.chart(ticker, {
         period1: formatDate(oneYearAgo),
         period2: formatDate(today),
         interval: "1d",
@@ -64,7 +64,8 @@ app.get("/inference", async (req, res) => {
     - "analysis": Your reasoning.
     Only return JSON, no additional commentary or formatting.
       `;
-  
+      console.log("GPT prompt:", prompt);
+
       // 5. Call OpenAI API for decision-making
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",

@@ -1,0 +1,7 @@
+{
+    "cash": 10000,
+    "positions": [
+      { "ticker": "NVDA", "shares": 50 }
+    ]
+  }
+  

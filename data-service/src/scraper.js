@@ -91,7 +91,7 @@ const scrapeStockNews = async (ticker) => {
 const newsWatchlist = ["AAPL", "TSLA", "GOOGL"]; // Modify this array as needed
 
 // Schedule news scraping every 15 minutes using node-cron
-cron.schedule("*/15 * * * *", async () => {
+cron.schedule("*/1 * * * *", async () => {
   console.log("Running scheduled news scraping...");
   await scrapeGeneralFinanceNews();
   for (const ticker of newsWatchlist) {

@@ -1,5 +1,5 @@
 import axios from "axios";
-import cheerio from "cheerio";
+import { load } from "cheerio"; // Import the load function from cheerio
 import cron from "node-cron";
 import mongoose from "mongoose";
 
@@ -22,7 +22,7 @@ const scrapeGeneralFinanceNews = async () => {
     console.log("Scraping general financial news...");
     const url = "https://finance.yahoo.com";
     const { data } = await axios.get(url);
-    const $ = cheerio.load(data);
+    const $ = load(data); // Use the load function
 
     const articles = [];
 
@@ -59,7 +59,7 @@ const scrapeStockNews = async (ticker) => {
     console.log(`Scraping news for ${ticker}...`);
     const url = `https://finance.yahoo.com/quote/${ticker}/news?p=${ticker}`;
     const { data } = await axios.get(url);
-    const $ = cheerio.load(data);
+    const $ = load(data); // Use the load function
 
     const articles = [];
 
@@ -91,7 +91,7 @@ const scrapeStockNews = async (ticker) => {
 const newsWatchlist = ["AAPL", "TSLA", "GOOGL"]; // Modify this array as needed
 
 // Schedule news scraping every 15 minutes using node-cron
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/15 * * * *", async () => {
   console.log("Running scheduled news scraping...");
   await scrapeGeneralFinanceNews();
   for (const ticker of newsWatchlist) {
@@ -100,4 +100,3 @@ cron.schedule("*/1 * * * *", async () => {
 });
 
 console.log("News scraper scheduled to run every 15 minutes.");
-g

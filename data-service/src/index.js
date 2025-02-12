@@ -75,7 +75,7 @@ app.listen(PORT, () => {
 function scheduleSnapshots(ticker) {
   // Calculate delay until next perfect 10-second mark.
   const now = Date.now();
-  const delay = 10000 - (now % 10000);
+  const delay = 20000 - (now % 20000);
   console.log(`First snapshot call for ${ticker} in ${delay} ms`);
 
   setTimeout(() => {

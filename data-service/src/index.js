@@ -1,9 +1,9 @@
-// src/index.js
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import yahooFinance from "yahoo-finance2";
 import Snapshot from "./models/Snapshot.js";
+import "./scraper.js"; // Import the scraper to start news scraping
 
 dotenv.config();
 
@@ -14,11 +14,6 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 
 // Connect to MongoDB using your connection string from .env
-// Example .env variables:
-//   MONGO_USER=billmli88
-//   MONGO_PASSWORD=your_password_here
-//   MONGO_CLUSTER=cluster0.xvtlu.mongodb.net
-//   MONGO_DBNAME=your-database-name
 const MONGO_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_CLUSTER}/${process.env.MONGO_DBNAME}?retryWrites=true&w=majority`;
 
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -60,17 +55,13 @@ app.get("/snapshot", async (req, res) => {
   }
 });
 
-// Start the Express server
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+// ------------------------
+// Snapshot Scheduling Section
+// ------------------------
 
 /**
  * Scheduler to call the /snapshot endpoint every 10 seconds
  * synchronized to the global clock (i.e. at perfect 10-second intervals).
- *
- * The scheduler calculates the delay until the next 10-second boundary,
- * then starts an interval to call the endpoint every 10,000 ms.
  */
 function scheduleSnapshots(ticker) {
   // Calculate delay until next perfect 10-second mark.
@@ -103,5 +94,13 @@ async function callSnapshotEndpoint(ticker) {
   }
 }
 
-// Start scheduling snapshots for a specific ticker, for example "NVDA"
-scheduleSnapshots("NVDA");
+// Start scheduling snapshots for each ticker in the snapshot watchlist
+const snapshotWatchlist = ["NVDA"]; // Modify as needed
+snapshotWatchlist.forEach((ticker) => {
+  scheduleSnapshots(ticker);
+});
+
+// Start the Express server
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});

@@ -21,6 +21,9 @@
     "mongoose": "^8.10.0",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
+    "nodemon": "^3.1.9",
+    "openai": "^4.84.0",
+    "serpapi": "^2.1.0",
     "yahoo-finance2": "^2.13.3"
   }
 }

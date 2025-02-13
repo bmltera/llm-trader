@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import yahooFinance from "yahoo-finance2";
 import Snapshot from "./models/Snapshot.js";
-import "./scraper.js"; // Import the scraper to start news scraping
+import scrapeAgent from "./agents/scrapeAgent.js";
+import trashCollectorAgent from "./agents/trashCollectorAgent.js";
 
 dotenv.config();
 
@@ -13,10 +14,14 @@ const PORT = process.env.PORT || 5000;
 // Use JSON middleware
 app.use(express.json());
 
+// Use the scrapeAgent and trashCollectorAgent routers
+app.use("/scrape", scrapeAgent);
+app.use("/trashCollector", trashCollectorAgent);
+
 // Connect to MongoDB using your connection string from .env
 const MONGO_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_CLUSTER}/${process.env.MONGO_DBNAME}?retryWrites=true&w=majority`;
-
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose
+  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ MongoDB Connected..."))
   .catch((error) => {
     console.error("❌ MongoDB Connection Error:", error);
@@ -32,7 +37,9 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 app.get("/snapshot", async (req, res) => {
   const ticker = req.query.ticker;
   if (!ticker) {
-    return res.status(400).json({ error: "ticker query parameter is required" });
+    return res
+      .status(400)
+      .json({ error: "ticker query parameter is required" });
   }
   try {
     // Fetch the current quote for the ticker
@@ -55,50 +62,65 @@ app.get("/snapshot", async (req, res) => {
   }
 });
 
-// ------------------------
-// Snapshot Scheduling Section
-// ------------------------
-
 /**
- * Scheduler to call the /snapshot endpoint every 10 seconds
- * synchronized to the global clock (i.e. at perfect 10-second intervals).
+ * A generic scheduling function that synchronizes the first call to a task at the next interval boundary,
+ * then calls it repeatedly at the given interval.
+ * @param {Function} taskFn - The task function to execute.
+ * @param {number} interval - The interval (in ms) at which to execute the task.
+ * @param {string} description - A short description for logging.
  */
-function scheduleSnapshots(ticker) {
-  // Calculate delay until next perfect 10-second mark.
+function scheduleTask(taskFn, interval, description) {
   const now = Date.now();
-  const delay = 20000 - (now % 20000);
-  console.log(`First snapshot call for ${ticker} in ${delay} ms`);
+  const delay = interval - (now % interval);
+  console.log(`First ${description} call in ${delay} ms`);
 
   setTimeout(() => {
-    // Call once immediately at the boundary.
-    callSnapshotEndpoint(ticker);
-    // Then call every 10 seconds thereafter.
-    setInterval(() => {
-      callSnapshotEndpoint(ticker);
-    }, 10000);
+    taskFn();
+    setInterval(taskFn, interval);
   }, delay);
 }
 
 /**
- * Calls the /snapshot endpoint for the given ticker.
- * Uses the global fetch (available in Node 18+). If not available, install node-fetch.
+ * A helper function to call an endpoint and log its output.
+ * @param {string} url - The endpoint URL.
+ * @param {string} description - Description for logging.
  */
-async function callSnapshotEndpoint(ticker) {
+async function callEndpoint(url, description) {
   try {
-    const url = `http://localhost:${PORT}/snapshot?ticker=${ticker}`;
     const response = await fetch(url);
     const data = await response.json();
-    console.log(`Snapshot taken at ${new Date().toISOString()} for ${ticker}:`, data);
-  } catch (err) {
-    console.error("Error calling /snapshot endpoint:", err);
+    console.log(`${description} at ${new Date().toISOString()}:`, data);
+  } catch (error) {
+    console.error(`Error calling ${description} endpoint:`, error);
   }
 }
 
-// Start scheduling snapshots for each ticker in the snapshot watchlist
-const snapshotWatchlist = ["NVDA"]; // Modify as needed
+// Snapshot watchlist for snapshot and scrape endpoints
+const snapshotWatchlist = ["NVDA", "TSLA"]; // Modify as needed
+
+// Schedule tasks for each ticker in the watchlist.
 snapshotWatchlist.forEach((ticker) => {
-  scheduleSnapshots(ticker);
+  // Schedule snapshot endpoint every 10 seconds.
+  scheduleTask(
+    () => callEndpoint(`http://localhost:${PORT}/snapshot?ticker=${ticker}`, `Snapshot for ${ticker}`),
+    10000, // 10 seconds in ms
+    `Snapshot for ${ticker}`
+  );
+
+  // Schedule scrape endpoint every 10 minutes.
+  scheduleTask(
+    () => callEndpoint(`http://localhost:${PORT}/scrape/ticker?ticker=${ticker}`, `Scrape for ${ticker}`),
+    600000, // 10 minutes in ms
+    `Scrape for ${ticker}`
+  );
 });
+
+// Schedule trash collector cleanup every hour.
+scheduleTask(
+  () => callEndpoint(`http://localhost:${PORT}/trashCollector/clean`, "Trash Collector Clean"),
+  3600000, // 1 hour in ms
+  "Trash Collector Clean"
+);
 
 // Start the Express server
 app.listen(PORT, () => {

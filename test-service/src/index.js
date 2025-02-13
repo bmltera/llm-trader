@@ -6,6 +6,7 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Snapshot from "./models/Snapshot.js"; // Import the Snapshot model
+import Sentiment from "./models/Sentiment.js"; // Import the Sentiment model
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_TOKEN });
 // Function to load portfolio.json dynamically
 const loadPortfolio = async () => {
   try {
-    const data = await fs.readFile("/data/portfolio.json", "utf-8");
+    const data = await fs.readFile("./src/data/portfolio.json", "utf-8");
     return JSON.parse(data);
   } catch (error) {
     console.error("Error loading portfolio.json:", error);
@@ -63,22 +64,26 @@ app.get("/inference", async (req, res) => {
       .sort({ timestamp: -1 })
       .limit(10);
 
-    // 4. Construct prompt for ChatGPT including snapshot data
+    // 3.6. Fetch the most recent sentiment document for this ticker
+    const sentimentDoc = await Sentiment.findOne({ ticker }).sort({ timestamp: -1 });
+
+    // 4. Construct prompt for ChatGPT including snapshot and sentiment data
     const prompt = `
-You are a trading assistant. Given the following data:
-Ticker: ${ticker}
-Current Data: ${JSON.stringify(quote)}
-Historical Data (Last Year): ${JSON.stringify(historical)}
-Portfolio: ${JSON.stringify(portfolio)}
-Snapshots (Last 10): ${JSON.stringify(snapshots)}
-Cash (USD): $10000
-Based on this data, provide a trading decision for ${ticker}.
-Respond in **JSON format** with:
-- "decision": "wait", "sell", or "buy"
-- "quantity": The number of shares to buy/sell, -1 if wait, can be fractional. You cannot spend more than the cash we have.
-- "analysis": Your reasoning.
-Only return JSON, no additional commentary or formatting.
-    `;
+  You are a trading assistant. Given the following data:
+  Ticker: ${ticker}
+  Current Data: ${JSON.stringify(quote)}
+  Historical Data (Last Year): ${JSON.stringify(historical)}
+  Portfolio: ${JSON.stringify(portfolio)}
+  Snapshots (Last 10): ${JSON.stringify(snapshots)}
+  Latest Sentiment: ${JSON.stringify(sentimentDoc)}
+  Based on this data, provide a trading decision for ${ticker}.
+  Respond in **JSON format** with:
+  - "decision": "wait", "sell", or "buy"
+  - "quantity": The number of shares to buy/sell, -1 if wait, can be fractional. You cannot spend more than the cash we have.
+  - "analysis": Your reasoning.
+  - "portfolio after decision": portfolio breakdown after your call. give the cash, each ticker and its quantity
+  Only return JSON, no additional commentary or formatting.
+      `;
     console.log("GPT prompt:", prompt);
 
     // 5. Call OpenAI API for decision-making

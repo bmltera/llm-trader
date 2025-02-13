@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const router = express.Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_TOKEN });
 
 // Function to scrape article text from the article URL
 const getArticleSummary = async (url) => {

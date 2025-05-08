@@ -16,5 +16,3 @@ This project leverages Large Language Models (LLMs) to make high-frequency tradi
 ### Low Latency & High Performance
 - Efficient Caching: Minimizes redundant API calls to external data providers.
 - Parallel Processing: The model service can process multiple trading signals simultaneously.
-
-## Coming Soon: Compare LLM-Trader's performance against top hedge funds.
